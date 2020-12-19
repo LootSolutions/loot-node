@@ -40,6 +40,7 @@ pub use frame_support::{
 
 /// Import the template pallet.
 pub use pallet_template;
+pub use pallet_identity;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -273,6 +274,33 @@ impl orml_nft::Trait for Runtime {
 	type TokenData = ();
 }
 
+parameter_types! {
+	// Minimum 4 CENTS/byte
+	pub const BasicDeposit: Balance = deposit(1, 258);
+	pub const FieldDeposit: Balance = deposit(0, 66);
+	pub const SubAccountDeposit: Balance = deposit(1, 53);
+	pub const MaxSubAccounts: u32 = 100;
+	pub const MaxAdditionalFields: u32 = 100;
+	pub const MaxRegistrars: u32 = 20;
+}
+
+/// Params above in source ^^^ 
+/// Configure the identity pallet in ../pallets/identity.
+impl pallet_identity::Trait for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type BasicDeposit = BasicDeposit;
+	type FieldDeposit = FieldDeposit;
+	type SubAccountDeposit = SubAccountDeposit;
+	type MaxSubAccounts = MaxSubAccounts;
+	type MaxAdditionalFields = MaxAdditionalFields;
+	type MaxRegistrars = MaxRegistrars;
+	type Slashed = ();
+	type ForceOrigin = SelfOrSudo; // FIXME: needs to be set properly for production! 
+	type RegistrarOrigin = SelfOrSudo; // FIXME: needs to be set properly for production! 
+	type WeightInfo = (); // FIXME: use real weights -- weights::pallet_identity::WeightInfo<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -291,6 +319,7 @@ construct_runtime!(
 		// Include the custom logic from the template pallet in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		OrmlNFT: orml_nft::{Module, Storage, Call},
+		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 	}
 );
 
