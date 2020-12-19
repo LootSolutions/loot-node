@@ -38,9 +38,32 @@ pub use frame_support::{
 	},
 };
 
+// Helper functions for account ownership checking/ensuring/validation
+use frame_system::{EnsureRoot, EnsureOneOf};
+
 /// Import the template pallet.
 pub use pallet_template;
 pub use pallet_identity;
+
+/// Constant values used within the runtime. For Currency
+pub const DOTS: Balance = 1_000_000_000_000;
+pub const DOLLARS: Balance = DOTS / 100;       // 10_000_000_000
+pub const CENTS: Balance = DOLLARS / 100;      // 100_000_000
+pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLICENTS
+}
+
+/// Constant values used within the runtime. For Time
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
+
+pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+// Time is measured by number of blocks.
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+pub const HOURS: BlockNumber = MINUTES * 60;
+pub const DAYS: BlockNumber = HOURS * 24;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -102,15 +125,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
-
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
-
-// Time is measured by number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
-
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -119,6 +133,12 @@ pub fn native_version() -> NativeVersion {
 		can_author_with: Default::default(),
 	}
 }
+
+type SelfOrSudo = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	EnsureRoot<AccountId> // FIXME: deduplicate - possibly let registrars make modifications?
+>;
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
