@@ -38,8 +38,32 @@ pub use frame_support::{
 	},
 };
 
+// Helper functions for account ownership checking/ensuring/validation
+use frame_system::{EnsureRoot, EnsureOneOf};
+
 /// Import the template pallet.
 pub use pallet_template;
+pub use pallet_identity;
+
+/// Constant values used within the runtime. For Currency
+pub const DOTS: Balance = 1_000_000_000_000;
+pub const DOLLARS: Balance = DOTS / 100;       // 10_000_000_000
+pub const CENTS: Balance = DOLLARS / 100;      // 100_000_000
+pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLICENTS
+}
+
+/// Constant values used within the runtime. For Time
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
+
+pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+// Time is measured by number of blocks.
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+pub const HOURS: BlockNumber = MINUTES * 60;
+pub const DAYS: BlockNumber = HOURS * 24;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -101,15 +125,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
-
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
-
-// Time is measured by number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
-
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -118,6 +133,12 @@ pub fn native_version() -> NativeVersion {
 		can_author_with: Default::default(),
 	}
 }
+
+type SelfOrSudo = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	EnsureRoot<AccountId> // FIXME: deduplicate - possibly let registrars make modifications?
+>;
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
@@ -273,6 +294,33 @@ impl orml_nft::Trait for Runtime {
 	type TokenData = ();
 }
 
+parameter_types! {
+	// Minimum 4 CENTS/byte
+	pub const BasicDeposit: Balance = deposit(1, 258);
+	pub const FieldDeposit: Balance = deposit(0, 66);
+	pub const SubAccountDeposit: Balance = deposit(1, 53);
+	pub const MaxSubAccounts: u32 = 100;
+	pub const MaxAdditionalFields: u32 = 100;
+	pub const MaxRegistrars: u32 = 20;
+}
+
+/// Params above in source ^^^ 
+/// Configure the identity pallet in ../pallets/identity.
+impl pallet_identity::Trait for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type BasicDeposit = BasicDeposit;
+	type FieldDeposit = FieldDeposit;
+	type SubAccountDeposit = SubAccountDeposit;
+	type MaxSubAccounts = MaxSubAccounts;
+	type MaxAdditionalFields = MaxAdditionalFields;
+	type MaxRegistrars = MaxRegistrars;
+	type Slashed = ();
+	type ForceOrigin = SelfOrSudo; // FIXME: needs to be set properly for production! 
+	type RegistrarOrigin = SelfOrSudo; // FIXME: needs to be set properly for production! 
+	type WeightInfo = (); // FIXME: use real weights -- weights::pallet_identity::WeightInfo<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -291,6 +339,7 @@ construct_runtime!(
 		// Include the custom logic from the template pallet in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		OrmlNFT: orml_nft::{Module, Storage, Call},
+		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 	}
 );
 
