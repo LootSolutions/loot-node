@@ -42,7 +42,8 @@ pub use frame_support::{
 use frame_system::{EnsureRoot, EnsureOneOf};
 
 /// Import the template pallet.
-pub use pallet_template;
+pub use orml_nft;
+pub use pallet_nft_token;
 pub use pallet_identity;
 
 /// Constant values used within the runtime. For Currency
@@ -282,8 +283,7 @@ impl pallet_sudo::Trait for Runtime {
 	type Call = Call;
 }
 
-/// Configure the template pallet in pallets/template.
-impl pallet_template::Trait for Runtime {
+impl pallet_nft_token::Trait for Runtime {
 	type Event = Event;
 }
 
@@ -336,9 +336,8 @@ construct_runtime!(
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		// Include the custom logic from the template pallet in the runtime.
-		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		OrmlNFT: orml_nft::{Module, Storage, Call},
+		NFTToken: pallet_nft_token::{Module, Call, Storage, Event<T>},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 	}
 );

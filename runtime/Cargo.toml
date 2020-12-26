@@ -25,8 +25,7 @@ hex-literal = { optional = true, version = '0.3.1' }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
 # local dependencies
-pallet-template = { path = '../pallets/template', default-features = false, version = '2.0.0' }
-orml-nft = { path = '../pallets/nft', default-features = false, version = '0.1.0' }
+pallet-nft-token = { path = '../pallets/pallet-nft-token', default-features = false, version = '0.1.0' }
 pallet-identity = { path = '../pallets/identity', default-features = false, version = '0.1.0' }
 
 # Substrate dependencies
@@ -55,6 +54,7 @@ sp-session = { default-features = false, version = '2.0.0' }
 sp-std = { default-features = false, version = '2.0.0' }
 sp-transaction-pool = { default-features = false, version = '2.0.0' }
 sp-version = { default-features = false, version = '2.0.0' }
+orml-nft= { git = 'https://github.com/open-web3-stack/open-runtime-module-library', rev = 'f278c766d8bcc36b94c0e0c63d1205a4e5351841', default-features = false}
 
 [features]
 default = ['std']
@@ -82,7 +82,7 @@ std = [
     'pallet-identity/std',
     'pallet-randomness-collective-flip/std',
     'pallet-sudo/std',
-    'pallet-template/std',
+    'pallet-nft-token/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment/std',
     'pallet-transaction-payment-rpc-runtime-api/std',

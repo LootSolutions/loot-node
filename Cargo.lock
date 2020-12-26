@@ -3295,14 +3295,14 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
- "orml-nft",
+ "orml-nft 0.3.2-dev",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
  "pallet-identity",
+ "pallet-nft-token",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
- "pallet-template",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -3474,6 +3474,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-nft"
+version = "0.3.2-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?rev=f278c766d8bcc36b94c0e0c63d1205a4e5351841#f278c766d8bcc36b94c0e0c63d1205a4e5351841"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "owning_ref"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3591,6 +3603,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-nft-token"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-nft 0.3.2-dev",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-randomness-collective-flip"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3638,18 +3663,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-template"
-version = "2.0.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
