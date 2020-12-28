@@ -11,7 +11,7 @@ version = '2.0.0'
 targets = ['x86_64-unknown-linux-gnu']
 
 [build-dependencies]
-wasm-builder-runner = { package = 'substrate-wasm-builder-runner', version = '2.0.0' }
+wasm-builder-runner = { package = 'substrate-wasm-builder-runner', version = '1.0.5' }
 
 # alias "parity-scale-code" to "codec"
 [dependencies.codec]
@@ -25,7 +25,8 @@ hex-literal = { optional = true, version = '0.3.1' }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
 # local dependencies
-pallet-nft-token = { path = '../pallets/pallet-nft-token', default-features = false, version = '0.1.0' }
+orml-nft= { path = '../pallets/nft', default-features = false}
+nft-token = { path = '../pallets/nft-token', default-features = false, version = '2.0.0' }
 pallet-identity = { path = '../pallets/identity', default-features = false, version = '0.1.0' }
 
 # Substrate dependencies
@@ -54,7 +55,6 @@ sp-session = { default-features = false, version = '2.0.0' }
 sp-std = { default-features = false, version = '2.0.0' }
 sp-transaction-pool = { default-features = false, version = '2.0.0' }
 sp-version = { default-features = false, version = '2.0.0' }
-orml-nft= { git = 'https://github.com/open-web3-stack/open-runtime-module-library', rev = 'f278c766d8bcc36b94c0e0c63d1205a4e5351841', default-features = false}
 
 [features]
 default = ['std']
@@ -75,14 +75,13 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'frame-system-rpc-runtime-api/std',
-    'orml-nft/std',
     'pallet-aura/std',
     'pallet-balances/std',
     'pallet-grandpa/std',
     'pallet-identity/std',
     'pallet-randomness-collective-flip/std',
     'pallet-sudo/std',
-    'pallet-nft-token/std',
+    'nft-token/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
@@ -97,4 +96,5 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
+    'orml-nft/std',
 ]
