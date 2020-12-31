@@ -300,8 +300,15 @@ impl orml_nft::Trait for Runtime {
 	type TokenData = u32;
 }
 
+parameter_types! {
+	pub const AurumRoyaltyFee: u128 = 10;
+}
+
+
 impl nft_token::Trait for Runtime {
 	type Event = Event;
+	type Currency = Balances;
+	type RoyaltyFee = AurumRoyaltyFee;
 }
 
 parameter_types! {

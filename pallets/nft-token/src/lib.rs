@@ -4,8 +4,10 @@
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// https://substrate.dev/docs/en/knowledgebase/runtime/frame
 
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch, traits::Get};
+use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch, traits::Get, debug};
 use frame_system::ensure_signed;
+use frame_support::traits::Currency;
+use frame_support::traits::ExistenceRequirement;
 
 use sp_runtime::{ traits::StaticLookup, DispatchError, DispatchResult };
 
@@ -15,10 +17,14 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+
 /// Configure the pallet by specifying the parameters and types on which it depends.
 pub trait Trait: frame_system::Trait + orml_nft::Trait {
 	/// Because this pallet emits events, it depends on the runtime's definition of an event.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+	type Currency: Currency<Self::AccountId>;
+	type RoyaltyFee: Get<BalanceOf<Self>>;
 }
 
 // The pallet's runtime storage items.
@@ -40,6 +46,7 @@ decl_event!(
 	pub enum Event<T> where 
 		AccountId = <T as frame_system::Trait>::AccountId, 
 		ClassId = <T as orml_nft::Trait>::ClassId,
+		Balance = BalanceOf<T>,
 		TokenId = <T as orml_nft::Trait>::TokenId {
 		/// Event documentation should end with an array that provides descriptive names for event
 		/// parameters. [something, who]
@@ -47,6 +54,7 @@ decl_event!(
 		OrmlNftClassCreated(AccountId, ClassId),
 		OrmlNftTokenMinted(AccountId, TokenId),
 		OrmlNftTokenTransferred(AccountId, AccountId, ClassId, TokenId),
+		RoyaltySent(AccountId, Balance),
 	}
 );
 
@@ -74,7 +82,7 @@ decl_module! {
 		/// An example dispatchable that takes a singles value as a parameter, writes the value to
 		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
 		#[weight = 10_000 + T::DbWeight::get().writes(1)]
-		pub fn do_something(origin, something: u32) -> dispatch::DispatchResult {
+		pub fn do_something(origin, something: u32, class_id: <T as orml_nft::Trait>::ClassId) -> dispatch::DispatchResult {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://substrate.dev/docs/en/knowledgebase/runtime/origin
@@ -82,6 +90,14 @@ decl_module! {
 
 			// Update storage.
 			Something::put(something);
+			let result = orml_nft::Module::<T>::classes(class_id);
+
+			if !result.is_none() {
+				let class_info = result.unwrap();
+				let royalty = T::RoyaltyFee::get();
+                T::Currency::transfer(&who, &class_info.owner, royalty, ExistenceRequirement::KeepAlive);
+                Self::deposit_event(RawEvent::RoyaltySent(who.clone(), royalty));
+			}
 
 			// Emit an event.
 			Self::deposit_event(RawEvent::SomethingStored(something, who));
