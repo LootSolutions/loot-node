@@ -43,7 +43,7 @@ pub use orml_nft;
 use frame_system::{EnsureRoot, EnsureOneOf};
 
 pub use pallet_identity;
-pub use nft_token;
+pub use royalty_nft;
 
 
 /// Constant values used within the runtime. For Currency
@@ -305,7 +305,7 @@ parameter_types! {
 }
 
 
-impl nft_token::Trait for Runtime {
+impl royalty_nft::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type RoyaltyFee = AurumRoyaltyFee;
@@ -353,7 +353,7 @@ construct_runtime!(
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		AurumNFT: nft_token::{Module, Call, Storage, Event<T>},
+		AurumNFT: royalty_nft::{Module, Call, Storage, Event<T>},
 		OrmlNFT: orml_nft::{Module, Storage},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 	}

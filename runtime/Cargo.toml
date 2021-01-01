@@ -26,7 +26,7 @@ serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
 # local dependencies
 orml-nft= { path = '../pallets/nft', default-features = false}
-nft-token = { path = '../pallets/nft-token', default-features = false, version = '2.0.0' }
+royalty-nft = { path = '../pallets/royalty-nft', default-features = false, version = '2.0.0' }
 pallet-identity = { path = '../pallets/identity', default-features = false, version = '0.1.0' }
 
 # Substrate dependencies
@@ -81,7 +81,7 @@ std = [
     'pallet-identity/std',
     'pallet-randomness-collective-flip/std',
     'pallet-sudo/std',
-    'nft-token/std',
+    'royalty-nft/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
