@@ -90,14 +90,6 @@ decl_module! {
 
 			// Update storage.
 			Something::put(something);
-			let result = orml_nft::Module::<T>::classes(class_id);
-
-			if !result.is_none() {
-				let class_info = result.unwrap();
-				let royalty = T::RoyaltyFee::get();
-                T::Currency::transfer(&who, &class_info.owner, royalty, ExistenceRequirement::KeepAlive);
-                Self::deposit_event(RawEvent::RoyaltySent(who.clone(), royalty));
-			}
 
 			// Emit an event.
 			Self::deposit_event(RawEvent::SomethingStored(something, who));
@@ -127,6 +119,7 @@ decl_module! {
 		#[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
 		pub fn mint_nft_token(origin, class_id: T::ClassId, metadata: orml_nft::CID, data: <T as orml_nft::Trait>::TokenData) -> dispatch::DispatchResult {
 			let who = ensure_signed(origin)?;
+			Self::send_royalties(&who, class_id);
 			let r: Result<T::TokenId, DispatchError> = orml_nft::Module::<T>::mint(&who, class_id, metadata, data);
 			Self::deposit_event(RawEvent::OrmlNftTokenMinted(who, r.unwrap()));
 			Ok(())
@@ -136,6 +129,7 @@ decl_module! {
 		pub fn nft_transfer(origin, dest: <T::Lookup as StaticLookup>::Source, token_class_id: T::ClassId, token_id: T::TokenId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to: T::AccountId = T::Lookup::lookup(dest)?;
+			Self::send_royalties(&who, token_class_id);
 			let _r = orml_nft::Module::<T>::transfer(&who, &to, (token_class_id, token_id));
 			Self::deposit_event(RawEvent::OrmlNftTokenTransferred(who, to, token_class_id, token_id));
 			Ok(())
@@ -160,4 +154,18 @@ decl_module! {
 			}
 		}
 	}
+}
+
+impl<T: Trait> Module<T> {
+    fn send_royalties(who: &T::AccountId, class_id: T::ClassId) {
+        let result = orml_nft::Module::<T>::classes(class_id);
+
+		if !result.is_none() {
+			let class_info = result.unwrap();
+			let royalty = T::RoyaltyFee::get();
+            T::Currency::transfer(who, &class_info.owner, royalty, ExistenceRequirement::KeepAlive);
+            Self::deposit_event(RawEvent::RoyaltySent(who.clone(), royalty));
+	    }
+        
+    }
 }
