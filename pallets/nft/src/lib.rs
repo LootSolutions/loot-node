@@ -31,11 +31,13 @@ use sp_std::vec::Vec;
 mod mock;
 mod tests;
 
+pub type CID = Vec<u8>;
+
 /// Class info
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct ClassInfo<TokenId, AccountId, Data> {
 	/// Class metadata
-	pub metadata: Vec<u8>,
+	pub metadata: CID,
 	/// Total issuance for the class
 	pub total_issuance: TokenId,
 	/// Class owner
@@ -48,7 +50,7 @@ pub struct ClassInfo<TokenId, AccountId, Data> {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct TokenInfo<AccountId, Data> {
 	/// Token metadata
-	pub metadata: Vec<u8>,
+	pub metadata: CID,
 	/// Token owner
 	pub owner: AccountId,
 	/// Token Properties
@@ -96,7 +98,7 @@ decl_storage! {
 		/// Next available class ID.
 		pub NextClassId get(fn next_class_id): T::ClassId;
 		/// Next available token ID.
-		pub NextTokenId get(fn next_token_id): map hasher(twox_64_concat) T::ClassId => T::TokenId;
+		pub NextTokenId get(fn next_token_id): T::TokenId;
 		/// Store class info.
 		///
 		/// Returns `None` if class info not set or removed.
@@ -106,7 +108,6 @@ decl_storage! {
 		/// Returns `None` if token info not set or removed.
 		pub Tokens get(fn tokens): double_map hasher(twox_64_concat) T::ClassId, hasher(twox_64_concat) T::TokenId => Option<TokenInfoOf<T>>;
 		/// Token existence check by owner and class ID.
-		#[cfg(not(feature = "disable-tokens-by-owner"))]
 		pub TokensByOwner get(fn tokens_by_owner): double_map hasher(twox_64_concat) T::AccountId, hasher(twox_64_concat) (T::ClassId, T::TokenId) => Option<()>;
 	}
 }
@@ -118,11 +119,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	/// Create NFT(non fungible token) class
-	pub fn create_class(
-		owner: &T::AccountId,
-		metadata: Vec<u8>,
-		data: T::ClassData,
-	) -> Result<T::ClassId, DispatchError> {
+	pub fn create_class(owner: &T::AccountId, metadata: CID, data: T::ClassData) -> Result<T::ClassId, DispatchError> {
 		let class_id = NextClassId::<T>::try_mutate(|id| -> Result<T::ClassId, DispatchError> {
 			let current_id = *id;
 			*id = id.checked_add(&One::one()).ok_or(Error::<T>::NoAvailableClassId)?;
@@ -142,23 +139,19 @@ impl<T: Trait> Module<T> {
 
 	/// Transfer NFT(non fungible token) from `from` account to `to` account
 	pub fn transfer(from: &T::AccountId, to: &T::AccountId, token: (T::ClassId, T::TokenId)) -> DispatchResult {
-		Tokens::<T>::try_mutate(token.0, token.1, |token_info| -> DispatchResult {
-			let mut info = token_info.as_mut().ok_or(Error::<T>::TokenNotFound)?;
-			ensure!(info.owner == *from, Error::<T>::NoPermission);
-			if from == to {
-				// no change needed
-				return Ok(());
-			}
+		if from == to {
+			return Ok(());
+		}
 
-			info.owner = to.clone();
+		TokensByOwner::<T>::try_mutate_exists(from, token, |token_by_owner| -> DispatchResult {
+			ensure!(token_by_owner.take().is_some(), Error::<T>::NoPermission);
+			TokensByOwner::<T>::insert(to, token, ());
 
-			#[cfg(not(feature = "disable-tokens-by-owner"))]
-			{
-				TokensByOwner::<T>::remove(from, token);
-				TokensByOwner::<T>::insert(to, token, ());
-			}
-
-			Ok(())
+			Tokens::<T>::try_mutate_exists(token.0, token.1, |token_info| -> DispatchResult {
+				let mut info = token_info.as_mut().ok_or(Error::<T>::TokenNotFound)?;
+				info.owner = to.clone();
+				Ok(())
+			})
 		})
 	}
 
@@ -166,10 +159,10 @@ impl<T: Trait> Module<T> {
 	pub fn mint(
 		owner: &T::AccountId,
 		class_id: T::ClassId,
-		metadata: Vec<u8>,
+		metadata: CID,
 		data: T::TokenData,
 	) -> Result<T::TokenId, DispatchError> {
-		NextTokenId::<T>::try_mutate(class_id, |id| -> Result<T::TokenId, DispatchError> {
+		NextTokenId::<T>::try_mutate(|id| -> Result<T::TokenId, DispatchError> {
 			let token_id = *id;
 			*id = id.checked_add(&One::one()).ok_or(Error::<T>::NoAvailableTokenId)?;
 
@@ -188,7 +181,6 @@ impl<T: Trait> Module<T> {
 				data,
 			};
 			Tokens::<T>::insert(class_id, token_id, token_info);
-			#[cfg(not(feature = "disable-tokens-by-owner"))]
 			TokensByOwner::<T>::insert(owner, (class_id, token_id), ());
 
 			Ok(token_id)
@@ -198,22 +190,20 @@ impl<T: Trait> Module<T> {
 	/// Burn NFT(non fungible token) from `owner`
 	pub fn burn(owner: &T::AccountId, token: (T::ClassId, T::TokenId)) -> DispatchResult {
 		Tokens::<T>::try_mutate_exists(token.0, token.1, |token_info| -> DispatchResult {
-			let t = token_info.take().ok_or(Error::<T>::TokenNotFound)?;
-			ensure!(t.owner == *owner, Error::<T>::NoPermission);
+			ensure!(token_info.take().is_some(), Error::<T>::TokenNotFound);
 
-			Classes::<T>::try_mutate(token.0, |class_info| -> DispatchResult {
-				let info = class_info.as_mut().ok_or(Error::<T>::ClassNotFound)?;
-				info.total_issuance = info
-					.total_issuance
-					.checked_sub(&One::one())
-					.ok_or(Error::<T>::NumOverflow)?;
-				Ok(())
-			})?;
+			TokensByOwner::<T>::try_mutate_exists(owner, token, |info| -> DispatchResult {
+				ensure!(info.take().is_some(), Error::<T>::NoPermission);
 
-			#[cfg(not(feature = "disable-tokens-by-owner"))]
-			TokensByOwner::<T>::remove(owner, token);
-
-			Ok(())
+				Classes::<T>::try_mutate(token.0, |class_info| -> DispatchResult {
+					let info = class_info.as_mut().ok_or(Error::<T>::ClassNotFound)?;
+					info.total_issuance = info
+						.total_issuance
+						.checked_sub(&One::one())
+						.ok_or(Error::<T>::NumOverflow)?;
+					Ok(())
+				})
+			})
 		})
 	}
 
@@ -223,18 +213,7 @@ impl<T: Trait> Module<T> {
 			let info = class_info.take().ok_or(Error::<T>::ClassNotFound)?;
 			ensure!(info.owner == *owner, Error::<T>::NoPermission);
 			ensure!(info.total_issuance == Zero::zero(), Error::<T>::CannotDestroyClass);
-
-			NextTokenId::<T>::remove(class_id);
-
 			Ok(())
 		})
-	}
-
-	pub fn is_owner(account: &T::AccountId, token: (T::ClassId, T::TokenId)) -> bool {
-		#[cfg(feature = "disable-tokens-by-owner")]
-		return Tokens::<T>::get(token.0, token.1).map_or(false, |token| token.owner == *account);
-
-		#[cfg(not(feature = "disable-tokens-by-owner"))]
-		TokensByOwner::<T>::contains_key(account, token)
 	}
 }

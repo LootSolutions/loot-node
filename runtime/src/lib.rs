@@ -38,12 +38,13 @@ pub use frame_support::{
 	},
 };
 
-// Helper functions for account ownership checking/ensuring/validation
+pub use orml_nft;
+
 use frame_system::{EnsureRoot, EnsureOneOf};
 
-/// Import the template pallet.
-pub use pallet_template;
 pub use pallet_identity;
+pub use royalty_nft;
+
 
 /// Constant values used within the runtime. For Currency
 pub const DOTS: Balance = 1_000_000_000_000;
@@ -116,14 +117,23 @@ pub mod opaque {
 }
 
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("node-template"),
-	impl_name: create_runtime_str!("node-template"),
+	spec_name: create_runtime_str!("aurum"),
+	impl_name: create_runtime_str!("aurum"),
 	authoring_version: 1,
-	spec_version: 1,
-	impl_version: 1,
+	spec_version: 20,
+	impl_version: 10,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
 };
+
+// pub const MILLISECS_PER_BLOCK: u64 = 6000;
+
+// pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+// // Time is measured by number of blocks.
+// pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+// pub const HOURS: BlockNumber = MINUTES * 60;
+// pub const DAYS: BlockNumber = HOURS * 24;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -282,16 +292,23 @@ impl pallet_sudo::Trait for Runtime {
 	type Call = Call;
 }
 
-/// Configure the template pallet in pallets/template.
-impl pallet_template::Trait for Runtime {
-	type Event = Event;
-}
 
 impl orml_nft::Trait for Runtime {
 	type ClassId = u64;
 	type TokenId = u64;
-	type ClassData = ();
-	type TokenData = ();
+	type ClassData = u32;
+	type TokenData = u32;
+}
+
+parameter_types! {
+	pub const AurumRoyaltyFee: u128 = 10;
+}
+
+
+impl royalty_nft::Trait for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type RoyaltyFee = AurumRoyaltyFee;
 }
 
 parameter_types! {
@@ -336,9 +353,8 @@ construct_runtime!(
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		// Include the custom logic from the template pallet in the runtime.
-		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
-		OrmlNFT: orml_nft::{Module, Storage, Call},
+		AurumNFT: royalty_nft::{Module, Call, Storage, Event<T>},
+		OrmlNFT: orml_nft::{Module, Storage},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 	}
 );
@@ -406,8 +422,7 @@ impl_runtime_apis! {
 			Executive::finalize_block()
 		}
 
-		fn inherent_extrinsics(data: sp_inherents::InherentData) ->
-			Vec<<Block as BlockT>::Extrinsic> {
+		fn inherent_extrinsics(data: sp_inherents::InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
 			data.create_extrinsics()
 		}
 
@@ -492,8 +507,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance>
-		for Runtime {
+	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<Block, Balance> for Runtime {
 		fn query_info(
 			uxt: <Block as BlockT>::Extrinsic,
 			len: u32,
@@ -514,20 +528,15 @@ impl_runtime_apis! {
 
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac")
-					.to_vec().into(),
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
 				// Total Issuance
-				hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80")
-					.to_vec().into(),
+				hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
 				// Execution Phase
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a")
-					.to_vec().into(),
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
 				// Event Count
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850")
-					.to_vec().into(),
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
 				// System Events
-				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7")
-					.to_vec().into(),
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
 			];
 
 			let mut batches = Vec::<BenchmarkBatch>::new();
