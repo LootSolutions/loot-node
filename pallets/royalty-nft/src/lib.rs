@@ -4,7 +4,7 @@
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// https://substrate.dev/docs/en/knowledgebase/runtime/frame
 
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch, traits::Get, debug};
+use frame_support::{decl_module, decl_storage, decl_event, decl_error, traits::Get};
 use frame_system::ensure_signed;
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -82,7 +82,7 @@ decl_module! {
 		/// An example dispatchable that takes a singles value as a parameter, writes the value to
 		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
 		#[weight = 10_000 + T::DbWeight::get().writes(1)]
-		pub fn do_something(origin, something: u32, class_id: <T as orml_nft::Trait>::ClassId) -> dispatch::DispatchResult {
+		pub fn do_something(origin, something: u32, class_id: <T as orml_nft::Trait>::ClassId) -> DispatchResult {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://substrate.dev/docs/en/knowledgebase/runtime/origin
@@ -109,7 +109,7 @@ decl_module! {
 		// "TokenId": "u64"
 		// https://github.com/open-web3-stack/open-runtime-module-library/blob/f278c766d8bcc36b94c0e0c63d1205a4e5351841/nft/src/lib.rs#L62
 		#[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-		pub fn create_nft_class(origin, class_metadata: orml_nft::CID, class_data : <T as orml_nft::Trait>::ClassData) -> dispatch::DispatchResult {
+		pub fn create_nft_class(origin, class_metadata: orml_nft::CID, class_data : <T as orml_nft::Trait>::ClassData) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let r: Result<T::ClassId, DispatchError> = orml_nft::Module::<T>::create_class(&who, class_metadata, class_data);
 			Self::deposit_event(RawEvent::OrmlNftClassCreated(who, r.unwrap()));
@@ -117,11 +117,11 @@ decl_module! {
 		}
 
 		#[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-		pub fn mint_nft_token(origin, class_id: T::ClassId, metadata: orml_nft::CID, data: <T as orml_nft::Trait>::TokenData) -> dispatch::DispatchResult {
+		pub fn mint_nft_token(origin, class_id: T::ClassId, metadata: orml_nft::CID, data: <T as orml_nft::Trait>::TokenData) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			Self::send_royalties(&who, class_id);
-			let r: Result<T::TokenId, DispatchError> = orml_nft::Module::<T>::mint(&who, class_id, metadata, data);
-			Self::deposit_event(RawEvent::OrmlNftTokenMinted(who, r.unwrap()));
+			Self::send_royalties(&who, class_id)?;
+			let token_id = orml_nft::Module::<T>::mint(&who, class_id, metadata, data)?;
+			Self::deposit_event(RawEvent::OrmlNftTokenMinted(who, token_id));
 			Ok(())
 		}
 		
@@ -129,7 +129,7 @@ decl_module! {
 		pub fn nft_transfer(origin, dest: <T::Lookup as StaticLookup>::Source, token_class_id: T::ClassId, token_id: T::TokenId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let to: T::AccountId = T::Lookup::lookup(dest)?;
-			Self::send_royalties(&who, token_class_id);
+			Self::send_royalties(&who, token_class_id)?;
 			let _r = orml_nft::Module::<T>::transfer(&who, &to, (token_class_id, token_id));
 			Self::deposit_event(RawEvent::OrmlNftTokenTransferred(who, to, token_class_id, token_id));
 			Ok(())
@@ -137,7 +137,7 @@ decl_module! {
 
 		/// An example dispatchable that may throw a custom error.
 		#[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-		pub fn cause_error(origin) -> dispatch::DispatchResult {
+		pub fn cause_error(origin) -> DispatchResult {
 			let _who = ensure_signed(origin)?;
 
 			// Read a value from storage.
@@ -157,15 +157,16 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    fn send_royalties(who: &T::AccountId, class_id: T::ClassId) {
-        let result = orml_nft::Module::<T>::classes(class_id);
+	fn send_royalties(who: &T::AccountId, class_id: T::ClassId) -> DispatchResult {
+  	let result = orml_nft::Module::<T>::classes(class_id);
 
 		if !result.is_none() {
 			let class_info = result.unwrap();
 			let royalty = T::RoyaltyFee::get();
-            T::Currency::transfer(who, &class_info.owner, royalty, ExistenceRequirement::KeepAlive);
-            Self::deposit_event(RawEvent::RoyaltySent(who.clone(), royalty));
-	    }
-        
-    }
+				T::Currency::transfer(who, &class_info.owner, royalty, ExistenceRequirement::KeepAlive)?;
+				Self::deposit_event(RawEvent::RoyaltySent(who.clone(), royalty));
+		}	
+		
+		Ok(())
+  }
 }
