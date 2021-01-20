@@ -34,7 +34,8 @@ decl_storage! {
     // This name may be updated, but each pallet in the runtime must use a unique name.
     // ---------------------------------vvvvvvvvvvvvvv
     trait Store for Module<T: Trait> as TemplateModule {
-        pub Info get(fn info): map hasher(blake2_128_concat) T::ClassId => Option<(bool, BalanceOf<T>, u64)>
+        pub Info get(fn info): map hasher(blake2_128_concat) T::ClassId => Option<(bool, BalanceOf<T>, u64)>;
+        pub Sales get(fn sales): double_map hasher(twox_64_concat) T::ClassId, hasher(twox_64_concat) T::TokenId => Option<BalanceOf<T>>;
     }
 }
 
@@ -54,6 +55,7 @@ decl_event!(
         OrmlNftTokenMinted(AccountId, TokenId),
         OrmlNftTokenTransferred(AccountId, AccountId, ClassId, TokenId),
         RoyaltySent(AccountId, Balance),
+        TokenSaleCreated(ClassId, TokenId),
     }
 );
 
@@ -63,10 +65,11 @@ decl_error! {
         /// Error names should be descriptive.
         NoneValue,
         /// Errors should have helpful documentation associated with them.
-                StorageOverflow,
-                InvalidClassId,
-                CantMint,
-                InvalidPermission,
+        StorageOverflow,
+        InvalidClassId,
+        CantMint,
+        InvalidPermission,
+        TokenNotOwned,
     }
 }
 
@@ -104,73 +107,73 @@ decl_module! {
             Self::deposit_event(RawEvent::OrmlNftClassCreated(who, token_id));
 
             Ok(())
-                }
+        }
 
-                #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-                pub fn set_mintable(origin, class_id: T::ClassId, can_mint: bool) -> DispatchResult {
-                    Self::ensure_class_owner(origin, class_id)?;
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        pub fn set_mintable(origin, class_id: T::ClassId, can_mint: bool) -> DispatchResult {
+            Self::ensure_class_owner(origin, class_id)?;
 
-                    Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
-                        ensure!(*info != None, Error::<T>::InvalidClassId);
+            Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
+                ensure!(*info != None, Error::<T>::InvalidClassId);
 
-                        let (_, price, royalty) = info.unwrap();
+                let (_, price, royalty) = info.unwrap();
 
-                        *info = Some((can_mint, price, royalty));
-                        Ok(())
-                    })?;
+                *info = Some((can_mint, price, royalty));
+                Ok(())
+            })?;
 
-                    Ok(())
-                }
+            Ok(())
+        }
 
-                #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-                pub fn set_price(origin, class_id: T::ClassId, price: BalanceOf<T>) -> DispatchResult {
-                    Self::ensure_class_owner(origin, class_id)?;
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        pub fn set_price(origin, class_id: T::ClassId, price: BalanceOf<T>) -> DispatchResult {
+            Self::ensure_class_owner(origin, class_id)?;
 
-                    Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
-                        ensure!(*info != None, Error::<T>::InvalidClassId);
+            Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
+                ensure!(*info != None, Error::<T>::InvalidClassId);
 
-                        let (can_mint, _, royalty) = info.unwrap();
+                let (can_mint, _, royalty) = info.unwrap();
 
-                        *info = Some((can_mint, price, royalty));
-                        Ok(())
-                    })?;
+                *info = Some((can_mint, price, royalty));
+                 Ok(())
+            })?;
 
-                    Ok(())
-                }
+            Ok(())
+        }
 
-                #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-                pub fn set_royalty(origin, class_id: T::ClassId, royalty: u64) -> DispatchResult {
-                    Self::ensure_class_owner(origin, class_id)?;
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        pub fn set_royalty(origin, class_id: T::ClassId, royalty: u64) -> DispatchResult {
+            Self::ensure_class_owner(origin, class_id)?;
 
-                    Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
-                        ensure!(*info != None, Error::<T>::InvalidClassId);
+            Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
+                ensure!(*info != None, Error::<T>::InvalidClassId);
 
-                        let (can_mint, price, _) = info.unwrap();
+                let (can_mint, price, _) = info.unwrap();
 
-                        *info = Some((can_mint, price, royalty));
-                        Ok(())
-                    })?;
+                *info = Some((can_mint, price, royalty));
+                Ok(())
+            })?;
 
-                    Ok(())
-                }
+            Ok(())
+        }
 
-                #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
         pub fn mint_nft_token(origin, class_id: T::ClassId, metadata: orml_nft::CID, data: <T as orml_nft::Trait>::TokenData) -> DispatchResult {
-                    let who = ensure_signed(origin)?;
+            let who = ensure_signed(origin)?;
 
-                    let (can_mint, price, _) = Self::info(class_id).ok_or(Error::<T>::InvalidClassId)?;
+            let (can_mint, price, _) = Self::info(class_id).ok_or(Error::<T>::InvalidClassId)?;
 
-                    ensure!(can_mint, Error::<T>::CantMint);
+            ensure!(can_mint, Error::<T>::CantMint);
 
-                    let token_id = orml_nft::Module::<T>::mint(&who, class_id, metadata, data)?;
+            let token_id = orml_nft::Module::<T>::mint(&who, class_id, metadata, data)?;
 
-                    let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::InvalidClassId)?;
-                    T::Currency::transfer(&who, &class_info.owner, price, ExistenceRequirement::KeepAlive)?;
+            let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::InvalidClassId)?;
+            T::Currency::transfer(&who, &class_info.owner, price, ExistenceRequirement::KeepAlive)?;
 
-                    Self::deposit_event(RawEvent::OrmlNftTokenMinted(who, token_id));
+            Self::deposit_event(RawEvent::OrmlNftTokenMinted(who, token_id));
 
-                    Ok(())
-                }
+            Ok(())
+        }
 
         // #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
         // pub fn mint_nft_token(origin, class_id: T::ClassId, metadata: orml_nft::CID, data: <T as orml_nft::Trait>::TokenData) -> DispatchResult {
@@ -189,7 +192,15 @@ decl_module! {
             let _r = orml_nft::Module::<T>::transfer(&who, &to, (token_class_id, token_id));
             Self::deposit_event(RawEvent::OrmlNftTokenTransferred(who, to, token_class_id, token_id));
             Ok(())
-                }
+        }
+
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        pub fn create_sale(origin, class_id: T::ClassId, token_id: T::TokenId, price: BalanceOf<T>) -> DispatchResult {
+            Self::ensure_token_owner(origin, (class_id, token_id))?;
+            Sales::<T>::insert(class_id, token_id, price);
+            Self::deposit_event(RawEvent::TokenSaleCreated(class_id, token_id));
+            Ok(())
+        }
     }
 }
 
@@ -222,6 +233,15 @@ impl<T: Trait> Module<T> {
 
         ensure!(who == class_info.owner, Error::<T>::InvalidPermission);
 
+        Ok(who)
+    }
+
+    fn ensure_token_owner(
+        origin: T::Origin,
+        token: (T::ClassId, T::TokenId),
+    ) -> Result<T::AccountId, DispatchError> {
+        let who = ensure_signed(origin)?;
+        ensure!(orml_nft::Module::<T>::tokens_by_owner(who.clone(), token).is_some(), Error::<T>::TokenNotOwned);
         Ok(who)
     }
 }
