@@ -56,6 +56,7 @@ decl_event!(
         OrmlNftTokenTransferred(AccountId, AccountId, ClassId, TokenId),
         RoyaltySent(AccountId, Balance),
         TokenSaleCreated(ClassId, TokenId),
+        TokenSaleDeleted(ClassId, TokenId),
     }
 );
 
@@ -70,6 +71,7 @@ decl_error! {
         CantMint,
         InvalidPermission,
         TokenNotOwned,
+        TokenNotForSale,
     }
 }
 
@@ -199,6 +201,15 @@ decl_module! {
             Self::ensure_token_owner(origin, (class_id, token_id))?;
             Sales::<T>::insert(class_id, token_id, price);
             Self::deposit_event(RawEvent::TokenSaleCreated(class_id, token_id));
+            Ok(())
+        }
+
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        pub fn delete_sale(origin, class_id: T::ClassId, token_id: T::TokenId) -> DispatchResult {
+            ensure!(Sales::<T>::contains_key(class_id, token_id), Error::<T>::TokenNotForSale);
+            Self::ensure_token_owner(origin, (class_id, token_id))?;
+            Sales::<T>::remove(class_id, token_id);
+            Self::deposit_event(RawEvent::TokenSaleDeleted(class_id, token_id));
             Ok(())
         }
     }
