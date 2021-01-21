@@ -57,6 +57,7 @@ decl_event!(
         RoyaltySent(AccountId, Balance),
         TokenSaleCreated(ClassId, TokenId),
         TokenSaleDeleted(ClassId, TokenId),
+        TokenSaleCompleted(AccountId, ClassId, TokenId),
     }
 );
 
@@ -70,8 +71,10 @@ decl_error! {
         InvalidClassId,
         CantMint,
         InvalidPermission,
+        TokenNotFound,
         TokenNotOwned,
         TokenNotForSale,
+        BuyerSellerSame,
     }
 }
 
@@ -210,6 +213,34 @@ decl_module! {
             Self::ensure_token_owner(origin, (class_id, token_id))?;
             Sales::<T>::remove(class_id, token_id);
             Self::deposit_event(RawEvent::TokenSaleDeleted(class_id, token_id));
+            Ok(())
+        }
+
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        pub fn buy(origin, class_id: T::ClassId, token_id: T::TokenId) -> DispatchResult {
+            ensure!(Sales::<T>::contains_key(class_id, token_id), Error::<T>::TokenNotForSale);
+            let buyer = ensure_signed(origin)?;
+            let token_info = orml_nft::Module::<T>::tokens(class_id, token_id).ok_or(Error::<T>::TokenNotFound)?;
+            let token_owner = token_info.owner;
+
+            // can't buy your own sale
+            ensure!(buyer != token_owner, Error::<T>::BuyerSellerSame);
+
+            //transfer the nft
+            let _r = orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id));
+
+            //send over funds to seller for purchase
+            let price = Sales::<T>::take(class_id, token_id).ok_or(Error::<T>::TokenNotForSale)?;
+            T::Currency::transfer(
+                &buyer,
+                &token_owner,
+                price,
+                ExistenceRequirement::KeepAlive,
+            )?;
+
+            //send royalties to class owner from the token owner who sold it
+            Self::send_royalties(&token_owner, class_id)?;
+            Self::deposit_event(RawEvent::TokenSaleCompleted(buyer, class_id, token_id));
             Ok(())
         }
     }
