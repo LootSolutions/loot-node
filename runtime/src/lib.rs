@@ -307,7 +307,6 @@ parameter_types! {
 impl royalty_nft::Trait for Runtime {
     type Event = Event;
     type Currency = Balances;
-    type RoyaltyFee = AurumRoyaltyFee;
 }
 
 parameter_types! {

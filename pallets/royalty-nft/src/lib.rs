@@ -9,6 +9,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, t
 use frame_system::ensure_signed;
 
 use sp_runtime::{traits::StaticLookup, DispatchError, DispatchResult};
+use sp_arithmetic::Permill;
 
 #[cfg(test)]
 mod mock;
@@ -24,7 +25,6 @@ pub trait Trait: frame_system::Trait + orml_nft::Trait {
     /// Because this pallet emits events, it depends on the runtime's definition of an event.
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     type Currency: Currency<Self::AccountId>;
-    type RoyaltyFee: Get<BalanceOf<Self>>;
 }
 
 // The pallet's runtime storage items.
@@ -34,7 +34,7 @@ decl_storage! {
     // This name may be updated, but each pallet in the runtime must use a unique name.
     // ---------------------------------vvvvvvvvvvvvvv
     trait Store for Module<T: Trait> as TemplateModule {
-        pub Info get(fn info): map hasher(blake2_128_concat) T::ClassId => Option<(bool, BalanceOf<T>, u64)>;
+        pub Info get(fn info): map hasher(blake2_128_concat) T::ClassId => Option<(bool, BalanceOf<T>, u32)>;
         pub Sales get(fn sales): double_map hasher(twox_64_concat) T::ClassId, hasher(twox_64_concat) T::TokenId => Option<BalanceOf<T>>;
     }
 }
@@ -70,11 +70,14 @@ decl_error! {
         StorageOverflow,
         InvalidClassId,
         CantMint,
+        CantCalculateRoyaltyFee,
         InvalidPermission,
         TokenNotFound,
         TokenNotOwned,
         TokenNotForSale,
         BuyerSellerSame,
+        NotEnoughFunds,
+        BalanceLessThanMininum,
     }
 }
 
@@ -101,7 +104,7 @@ decl_module! {
         // "TokenId": "u64"
         // https://github.com/open-web3-stack/open-runtime-module-library/blob/f278c766d8bcc36b94c0e0c63d1205a4e5351841/nft/src/lib.rs#L62
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-        pub fn create_nft_class(origin, class_metadata: orml_nft::CID, class_data : <T as orml_nft::Trait>::ClassData, price: BalanceOf<T>, royalty: u64) -> DispatchResult {
+        pub fn create_nft_class(origin, class_metadata: orml_nft::CID, class_data : <T as orml_nft::Trait>::ClassData, price: BalanceOf<T>, royalty: u32) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let class_id = orml_nft::Module::<T>::next_class_id();
@@ -143,7 +146,7 @@ decl_module! {
         }
 
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-        pub fn set_royalty(origin, class_id: T::ClassId, royalty: u64) -> DispatchResult {
+        pub fn set_royalty(origin, class_id: T::ClassId, royalty: u32) -> DispatchResult {
             Self::ensure_class_owner(origin, class_id)?;
 
             Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
@@ -178,8 +181,14 @@ decl_module! {
         pub fn nft_transfer(origin, dest: <T::Lookup as StaticLookup>::Source, token_class_id: T::ClassId, token_id: T::TokenId) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let to: T::AccountId = T::Lookup::lookup(dest)?;
-            Self::send_royalties(&who, token_class_id)?;
+
+            // don't we need to send royalties for an nft_transfer??
+            // Self::send_royalties(&who, token_class_id)?;
+
             orml_nft::Module::<T>::transfer(&who, &to, (token_class_id, token_id))?;
+
+            // we need to delete a sale if it exists because the transfer means there is now a new owner of the token
+            Sales::<T>::remove(token_class_id, token_id);
             Self::deposit_event(RawEvent::OrmlNftTokenTransferred(who, to, token_class_id, token_id));
             Ok(())
         }
@@ -207,24 +216,36 @@ decl_module! {
             let buyer = ensure_signed(origin)?;
             let token_info = orml_nft::Module::<T>::tokens(class_id, token_id).ok_or(Error::<T>::TokenNotFound)?;
             let token_owner = token_info.owner;
+            let buyer_balance = T::Currency::total_balance(&buyer);
+            let sales_price = Sales::<T>::get(class_id, token_id).ok_or(Error::<T>::TokenNotForSale)?;
+            let royalty = Self::calculate_royalty(class_id, sales_price)?;
+            let min = T::Currency::minimum_balance();
 
             // can't buy your own sale
             ensure!(buyer != token_owner, Error::<T>::BuyerSellerSame);
 
+            // ensure buyer has the amount for sale
+            ensure!(buyer_balance-sales_price >= 0.into(), Error::<T>::NotEnoughFunds);
+
+            // ensure buyer has minimum accoun balance after sale
+            ensure!(buyer_balance-sales_price > min, Error::<T>::BalanceLessThanMininum);
+
+
             //send over funds to seller for purchase to ensure buyer has funds
-            let price = Sales::<T>::take(class_id, token_id).ok_or(Error::<T>::TokenNotForSale)?;
             T::Currency::transfer(
                 &buyer,
                 &token_owner,
-                price,
+                sales_price-royalty,
                 ExistenceRequirement::KeepAlive,
             )?;
+
+            //send royalties to class owner from the token owner who sold it
+            Self::send_royalties(&token_owner, class_id, sales_price)?;
 
             //transfer the nft
             orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id))?;
 
-            //send royalties to class owner from the token owner who sold it
-            Self::send_royalties(&token_owner, class_id)?;
+
             Self::deposit_event(RawEvent::TokenSaleCompleted(buyer, class_id, token_id));
             Ok(())
         }
@@ -232,10 +253,9 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    fn send_royalties(who: &T::AccountId, class_id: T::ClassId) -> DispatchResult {
+    fn send_royalties(who: &T::AccountId, class_id: T::ClassId, price: BalanceOf<T>) -> DispatchResult {
         let class_info = orml_nft::Module::<T>::classes(class_id).ok_or(Error::<T>::InvalidClassId)?;
-
-        let royalty = T::RoyaltyFee::get();
+        let royalty: BalanceOf<T> = Self::calculate_royalty(class_id, price)?;
 
         T::Currency::transfer(
             who,
@@ -247,6 +267,12 @@ impl<T: Trait> Module<T> {
         Self::deposit_event(RawEvent::RoyaltySent(who.clone(), royalty));
 
         Ok(())
+    }
+
+    fn calculate_royalty(class_id: T::ClassId, price: BalanceOf<T>) -> Result<BalanceOf<T>, DispatchError>  {
+        let (_, _, royalty) = Info::<T>::get(class_id).ok_or(Error::<T>::InvalidClassId)?;
+        let royalty_fee: BalanceOf<T> = Permill::from_percent(royalty).mul_floor(price);
+        Ok(royalty_fee)
     }
 
     fn ensure_class_owner(
