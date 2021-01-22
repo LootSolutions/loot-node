@@ -179,7 +179,7 @@ decl_module! {
             let who = ensure_signed(origin)?;
             let to: T::AccountId = T::Lookup::lookup(dest)?;
             Self::send_royalties(&who, token_class_id)?;
-            let _r = orml_nft::Module::<T>::transfer(&who, &to, (token_class_id, token_id));
+            orml_nft::Module::<T>::transfer(&who, &to, (token_class_id, token_id))?;
             Self::deposit_event(RawEvent::OrmlNftTokenTransferred(who, to, token_class_id, token_id));
             Ok(())
         }
@@ -212,7 +212,7 @@ decl_module! {
             ensure!(buyer != token_owner, Error::<T>::BuyerSellerSame);
 
             //transfer the nft
-            let _r = orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id));
+            orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id))?;
 
             //send over funds to seller for purchase
             let price = Sales::<T>::take(class_id, token_id).ok_or(Error::<T>::TokenNotForSale)?;
