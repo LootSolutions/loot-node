@@ -211,10 +211,7 @@ decl_module! {
             // can't buy your own sale
             ensure!(buyer != token_owner, Error::<T>::BuyerSellerSame);
 
-            //transfer the nft
-            orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id))?;
-
-            //send over funds to seller for purchase
+            //send over funds to seller for purchase to ensure buyer has funds
             let price = Sales::<T>::take(class_id, token_id).ok_or(Error::<T>::TokenNotForSale)?;
             T::Currency::transfer(
                 &buyer,
@@ -222,6 +219,9 @@ decl_module! {
                 price,
                 ExistenceRequirement::KeepAlive,
             )?;
+
+            //transfer the nft
+            orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id))?;
 
             //send royalties to class owner from the token owner who sold it
             Self::send_royalties(&token_owner, class_id)?;
