@@ -4631,6 +4631,7 @@ dependencies = [
  "frame-system",
  "orml-nft",
  "parity-scale-codec",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
