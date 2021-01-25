@@ -164,10 +164,18 @@ decl_module! {
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
         pub fn mint_nft_token(origin, class_id: T::ClassId, metadata: orml_nft::CID, data: <T as orml_nft::Trait>::TokenData) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            let min = T::Currency::minimum_balance();
+            let minter_balance = T::Currency::total_balance(&who);
 
             let (can_mint, price, _) = Self::info(class_id).ok_or(Error::<T>::InvalidClassId)?;
 
             ensure!(can_mint, Error::<T>::CantMint);
+
+            // ensure minter has enough funds for minting
+            ensure!(minter_balance > price, Error::<T>::NotEnoughFunds);
+
+            // ensure minter has mininum balance after minting
+            ensure!(minter_balance-price > min, Error::<T>::BalanceLessThanMininum);
 
             let token_id = orml_nft::Module::<T>::mint(&who, class_id, metadata, data)?;
 
@@ -227,7 +235,7 @@ decl_module! {
             ensure!(buyer != token_owner, Error::<T>::BuyerSellerSame);
 
             // ensure buyer has the amount for sale
-            ensure!(buyer_balance-sales_price >= 0.into(), Error::<T>::NotEnoughFunds);
+            ensure!(buyer_balance > sales_price, Error::<T>::NotEnoughFunds);
 
             // ensure buyer has minimum accoun balance after sale
             ensure!(buyer_balance-sales_price > min, Error::<T>::BalanceLessThanMininum);
