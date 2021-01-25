@@ -78,6 +78,7 @@ decl_error! {
         BuyerSellerSame,
         NotEnoughFunds,
         BalanceLessThanMininum,
+        InvalidRoyalty,
     }
 }
 
@@ -148,6 +149,7 @@ decl_module! {
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
         pub fn set_royalty(origin, class_id: T::ClassId, royalty: u32) -> DispatchResult {
             Self::ensure_class_owner(origin, class_id)?;
+            ensure!(royalty < 100, Error::<T>::InvalidRoyalty);
 
             Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
                 let (can_mint, price, _) = info.ok_or(Error::<T>::InvalidClassId)?;

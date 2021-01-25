@@ -20,7 +20,7 @@ fn mint_nft_token() {
 
         // Can't mint token that is too expensive
         assert_ok!(AurumNft::create_nft_class(Origin::signed(100), vec![0], (), 1000, 10));
-        assert_noop!(AurumNft::mint_nft_token(Origin::signed(200), 1, vec![0], ()), pallet_balances::Error::<Test, _>::InsufficientBalance);
+        assert_noop!(AurumNft::mint_nft_token(Origin::signed(200), 1, vec![0], ()), Error::<Test>::NotEnoughFunds);
     });
 }
 
@@ -82,7 +82,7 @@ fn set_info() {
         assert_eq!(AurumNft::info(0), Some((false, 20, 20)));
 
         // Can't set royalty passed 100
-        assert_noop!(AurumNft::set_royalty(Origin::signed(100), 0, 101), Error::<Test>::NoneValue);
+        assert_noop!(AurumNft::set_royalty(Origin::signed(100), 0, 101), Error::<Test>::InvalidRoyalty);
         assert_eq!(AurumNft::info(0), Some((false, 20, 20)));
     });
 }
