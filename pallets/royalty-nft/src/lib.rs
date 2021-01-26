@@ -254,6 +254,8 @@ decl_module! {
             //transfer the nft
             orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id))?;
 
+            //remove sale after it's been bought
+            Sales::<T>::remove(class_id, token_id);
 
             Self::deposit_event(RawEvent::TokenSaleCompleted(buyer, class_id, token_id));
             Ok(())
