@@ -20,7 +20,7 @@ fn mint_nft_token() {
 
         // Can't mint token that is too expensive
         assert_ok!(AurumNft::create_nft_class(Origin::signed(100), vec![0], (), 1000, 10));
-        assert_noop!(AurumNft::mint_nft_token(Origin::signed(200), 1, vec![0], ()), pallet_balances::Error::<Test, _>::InsufficientBalance);
+        assert_noop!(AurumNft::mint_nft_token(Origin::signed(200), 1, vec![0], ()), Error::<Test>::NotEnoughFunds);
     });
 }
 
@@ -82,7 +82,7 @@ fn set_info() {
         assert_eq!(AurumNft::info(0), Some((false, 20, 20)));
 
         // Can't set royalty passed 100
-        assert_noop!(AurumNft::set_royalty(Origin::signed(100), 0, 101), Error::<Test>::NoneValue);
+        assert_noop!(AurumNft::set_royalty(Origin::signed(100), 0, 101), Error::<Test>::InvalidRoyalty);
         assert_eq!(AurumNft::info(0), Some((false, 20, 20)));
     });
 }
@@ -93,21 +93,22 @@ fn buy_nft() {
         let seller_balance = Balances::free_balance(&100);
         let buyer_balance = Balances::free_balance(&200);
         let class_creator_balance = Balances::free_balance(&300);
-        let price = 20;
+        let minting_price = 10;
+        let sales_price = 20;
         let royalty_amount = 2; // 10% of price
 
-        assert_ok!(AurumNft::create_nft_class(Origin::signed(300), vec![0], (), 10, 10));
+        assert_ok!(AurumNft::create_nft_class(Origin::signed(300), vec![0], (), minting_price, 10));
 
         assert_ok!(AurumNft::mint_nft_token(Origin::signed(100), 0, vec![0], ()));
-        assert_ok!(AurumNft::create_sale(Origin::signed(100), 0, 0, price));
+        assert_ok!(AurumNft::create_sale(Origin::signed(100), 0, 0, sales_price));
 
         // Can buy
         assert_ok!(AurumNft::buy(Origin::signed(200), 0, 0));
 
         // Balances transfered
-        assert_eq!(Balances::free_balance(200), buyer_balance - price);
-        assert_eq!(Balances::free_balance(100), seller_balance + price - royalty_amount);
-        assert_eq!(Balances::free_balance(300), class_creator_balance + royalty_amount);
+        assert_eq!(Balances::free_balance(200), buyer_balance - sales_price);
+        assert_eq!(Balances::free_balance(100), seller_balance - minting_price + sales_price - royalty_amount);
+        assert_eq!(Balances::free_balance(300), class_creator_balance + minting_price + royalty_amount);
 
         // Token transfered to buyer
         assert_eq!(NFT::tokens(0, 0).unwrap().owner, 200);
@@ -120,7 +121,8 @@ fn buy_nft() {
         assert_noop!(AurumNft::buy(Origin::signed(200), 0, 1), Error::<Test>::TokenNotForSale);
 
         // Can't buy your own token
-        assert_noop!(AurumNft::buy(Origin::signed(100), 0, 1), Error::<Test>::TokenNotForSale);
+        assert_ok!(AurumNft::create_sale(Origin::signed(100), 0, 1, sales_price));
+        assert_noop!(AurumNft::buy(Origin::signed(100), 0, 1), Error::<Test>::BuyerSellerSame);
     });
 }
 

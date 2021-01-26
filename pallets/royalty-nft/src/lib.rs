@@ -78,6 +78,7 @@ decl_error! {
         BuyerSellerSame,
         NotEnoughFunds,
         BalanceLessThanMininum,
+        InvalidRoyalty,
     }
 }
 
@@ -148,6 +149,7 @@ decl_module! {
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
         pub fn set_royalty(origin, class_id: T::ClassId, royalty: u32) -> DispatchResult {
             Self::ensure_class_owner(origin, class_id)?;
+            ensure!(royalty < 100, Error::<T>::InvalidRoyalty);
 
             Info::<T>::try_mutate(class_id, |info| -> DispatchResult {
                 let (can_mint, price, _) = info.ok_or(Error::<T>::InvalidClassId)?;
@@ -162,10 +164,18 @@ decl_module! {
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
         pub fn mint_nft_token(origin, class_id: T::ClassId, metadata: orml_nft::CID, data: <T as orml_nft::Trait>::TokenData) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            let min = T::Currency::minimum_balance();
+            let minter_balance = T::Currency::total_balance(&who);
 
             let (can_mint, price, _) = Self::info(class_id).ok_or(Error::<T>::InvalidClassId)?;
 
             ensure!(can_mint, Error::<T>::CantMint);
+
+            // ensure minter has enough funds for minting
+            ensure!(minter_balance > price, Error::<T>::NotEnoughFunds);
+
+            // ensure minter has mininum balance after minting
+            ensure!(minter_balance-price > min, Error::<T>::BalanceLessThanMininum);
 
             let token_id = orml_nft::Module::<T>::mint(&who, class_id, metadata, data)?;
 
@@ -225,11 +235,10 @@ decl_module! {
             ensure!(buyer != token_owner, Error::<T>::BuyerSellerSame);
 
             // ensure buyer has the amount for sale
-            ensure!(buyer_balance-sales_price >= 0.into(), Error::<T>::NotEnoughFunds);
+            ensure!(buyer_balance > sales_price, Error::<T>::NotEnoughFunds);
 
-            // ensure buyer has minimum accoun balance after sale
+            // ensure buyer has minimum account balance after sale
             ensure!(buyer_balance-sales_price > min, Error::<T>::BalanceLessThanMininum);
-
 
             //send over funds to seller for purchase to ensure buyer has funds
             T::Currency::transfer(
@@ -240,11 +249,13 @@ decl_module! {
             )?;
 
             //send royalties to class owner from the token owner who sold it
-            Self::send_royalties(&token_owner, class_id, sales_price)?;
+            Self::send_royalties(&buyer, class_id, sales_price)?;
 
             //transfer the nft
             orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id))?;
 
+            //remove sale after it's been bought
+            Sales::<T>::remove(class_id, token_id);
 
             Self::deposit_event(RawEvent::TokenSaleCompleted(buyer, class_id, token_id));
             Ok(())
