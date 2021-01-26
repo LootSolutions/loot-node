@@ -237,9 +237,8 @@ decl_module! {
             // ensure buyer has the amount for sale
             ensure!(buyer_balance > sales_price, Error::<T>::NotEnoughFunds);
 
-            // ensure buyer has minimum accoun balance after sale
+            // ensure buyer has minimum account balance after sale
             ensure!(buyer_balance-sales_price > min, Error::<T>::BalanceLessThanMininum);
-
 
             //send over funds to seller for purchase to ensure buyer has funds
             T::Currency::transfer(
@@ -250,7 +249,7 @@ decl_module! {
             )?;
 
             //send royalties to class owner from the token owner who sold it
-            Self::send_royalties(&token_owner, class_id, sales_price)?;
+            Self::send_royalties(&buyer, class_id, sales_price)?;
 
             //transfer the nft
             orml_nft::Module::<T>::transfer(&token_owner, &buyer, (class_id, token_id))?;
