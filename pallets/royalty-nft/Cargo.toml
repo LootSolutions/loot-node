@@ -1,11 +1,11 @@
 [package]
-authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+authors = ['LootSolutions']
 description = 'FRAME pallet template for defining custom runtime logic.'
 edition = '2018'
-homepage = 'https://substrate.dev'
-license = 'Unlicense'
+homepage = 'https://github.com/LootSolutions/'
+license = 'Apache-2.0'
 name = 'royalty-nft'
-repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+repository = 'https://github.com/LootSolutions/loot-node/'
 version = '2.0.0'
 
 [package.metadata.docs.rs]
@@ -21,7 +21,7 @@ version = '1.3.4'
 [dependencies]
 frame-support = { default-features = false, version = '2.0.0' }
 frame-system = { default-features = false, version = '2.0.0' }
-orml-nft= { path = "../nft/", default-features = false}
+loot-nft= { path = "../nft/", default-features = false}
 sp-arithmetic = { default-features = false, version = '2.0.0' }
 sp-runtime = { default-features = false, version = '2.0.0' }
 
@@ -39,5 +39,5 @@ std = [
     'frame-system/std',
     'sp-arithmetic/std',
     'sp-runtime/std',
-    'orml-nft/std',
+    'loot-nft/std',
 ]

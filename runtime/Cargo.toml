@@ -1,10 +1,10 @@
 [package]
-authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+authors = ['LootSolutions']
 edition = '2018'
-homepage = 'https://substrate.dev'
-license = 'Unlicense'
-name = 'node-template-runtime'
-repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+homepage = 'https://github.com/LootSolutions/'
+license = 'Apache-2.0'
+name = 'loot-node-runtime'
+repository = 'https://github.com/LootSolutions/loot-node/'
 version = '2.0.0'
 
 [package.metadata.docs.rs]
@@ -25,7 +25,7 @@ hex-literal = { optional = true, version = '0.3.1' }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
 # local dependencies
-orml-nft= { path = '../pallets/nft', default-features = false}
+loot-nft= { path = '../pallets/nft', default-features = false}
 royalty-nft = { path = '../pallets/royalty-nft', default-features = false, version = '2.0.0' }
 pallet-identity = { path = '../pallets/identity', default-features = false, version = '0.1.0' }
 
@@ -96,5 +96,5 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
-    'orml-nft/std',
+    'loot-nft/std',
 ]
