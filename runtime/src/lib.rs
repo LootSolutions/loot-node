@@ -118,8 +118,8 @@ pub mod opaque {
 }
 
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("aurum"),
-    impl_name: create_runtime_str!("aurum"),
+    spec_name: create_runtime_str!("loot"),
+    impl_name: create_runtime_str!("loot"),
     authoring_version: 1,
     spec_version: 20,
     impl_version: 10,
@@ -301,7 +301,7 @@ impl orml_nft::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const AurumRoyaltyFee: u128 = 10;
+    pub const LootRoyaltyFee: u128 = 10;
 }
 
 impl royalty_nft::Trait for Runtime {
@@ -351,7 +351,7 @@ construct_runtime!(
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-        AurumNFT: royalty_nft::{Module, Call, Storage, Event<T>},
+        LootNFT: royalty_nft::{Module, Call, Storage, Event<T>},
         OrmlNFT: orml_nft::{Module, Storage},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
     }

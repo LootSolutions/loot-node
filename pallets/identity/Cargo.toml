@@ -1,11 +1,11 @@
 [package]
 name = "pallet-identity"
 version = "0.1.0"
-authors = ["Aurum <https://github.com/AurumNetwork>"]
+authors = ["Loot <https://github.com/LootSolutions>"]
 edition = "2018"
 license = "Apache-2.0"
-repository = "https://github.com/AurumNetwork/aurum_runtime"
-description = "Aurum identity management pallet"
+repository = "https://github.com/LootSolutions/loot-node"
+description = "Loot identity management pallet"
 readme = "README.md"
 
 [package.metadata.docs.rs]

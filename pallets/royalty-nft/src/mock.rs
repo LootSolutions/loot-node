@@ -86,7 +86,7 @@ impl Trait for Test {
 type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 
-pub type AurumNft = Module<Test>;
+pub type LootNft = Module<Test>;
 pub type NFT = orml_nft::Module<Test>;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

@@ -41,7 +41,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
 
     Ok(ChainSpec::from_genesis(
         // Name
-        "Aurum",
+        "Loot",
         // ID
         "dev",
         ChainType::Development,
