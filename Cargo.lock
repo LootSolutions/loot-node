@@ -2937,19 +2937,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "loot-nft"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "loot-node"
 version = "2.0.0"
 dependencies = [
@@ -2995,7 +2982,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
- "loot-nft",
+ "orml-nft",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
@@ -3472,6 +3459,19 @@ name = "openssl-probe"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
+
+[[package]]
+name = "orml-nft"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "owning_ref"
@@ -4629,7 +4629,7 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
- "loot-nft",
+ "orml-nft",
  "pallet-balances",
  "parity-scale-codec",
  "sp-arithmetic",

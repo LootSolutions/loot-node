@@ -25,7 +25,7 @@ hex-literal = { optional = true, version = '0.3.1' }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
 # local dependencies
-loot-nft= { path = '../pallets/nft', default-features = false}
+orml-nft= { path = '../pallets/nft', default-features = false}
 royalty-nft = { path = '../pallets/royalty-nft', default-features = false, version = '2.0.0' }
 pallet-identity = { path = '../pallets/identity', default-features = false, version = '0.1.0' }
 
@@ -96,5 +96,5 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
-    'loot-nft/std',
+    'orml-nft/std',
 ]
