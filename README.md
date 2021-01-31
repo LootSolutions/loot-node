@@ -1,7 +1,7 @@
 # Loot Node &middot; [![GitHub license](https://img.shields.io/badge/license-GPL3%2FApache2-blue)](#LICENCE)
 
-<p align="center" width="50%">
-  <img src="./docs/media/Loot_Logo_1k.png">
+<p align="center">
+  <img width="50%" src="./docs/media/Loot_Logo_1k.png">
 </p>
 
 A [Substrate])(https://substrate.dev) based blockchain node, custom made for Loot.
