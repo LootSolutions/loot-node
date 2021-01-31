@@ -4,7 +4,7 @@
   <img width="50%" src="./docs/media/Loot_Logo_1k.png">
 </p>
 
-<center> <b>A <a href="https://substrate.dev" target="_blank">Substrate</a> based node <br> Custom made for the Loot blockchain.</b></center>
+<p align="center"><b>A <a href="https://substrate.dev" target="_blank">Substrate</a> based node <br> Custom made for the Loot blockchain.</b></p>
 
 ---
 
